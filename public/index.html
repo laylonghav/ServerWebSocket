@@ -1,36 +1,45 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Simple Chat</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; }
-    #chat { list-style: none; padding: 0; }
-    #chat li { margin: 5px 0; }
-  </style>
+  <title>WebSocket Test</title>
 </head>
 <body>
-  <h2>WebSocket Chat App</h2>
-  <input id="name" placeholder="Your name" />
-  <input id="message" placeholder="Type a message..." />
+  <h1>WebSocket Tester</h1>
+  
+  <input type="text" id="messageInput" placeholder="Enter JSON message">
   <button onclick="sendMessage()">Send</button>
-  <ul id="chat"></ul>
+
+  <pre id="output"></pre>
 
   <script>
-    const socket = new WebSocket('ws://' + location.host);
-    
-    socket.onmessage = function (event) {
-      const chat = document.getElementById('chat');
-      const li = document.createElement('li');
-      li.textContent = event.data;
-      chat.appendChild(li);
+    // ✅ Create WebSocket connection
+    const socket = new WebSocket('ws://localhost:3000'); // Change to your WebSocket URL
+
+    socket.onopen = () => {
+      console.log('Connected to WebSocket');
+      document.getElementById("output").innerText += "Connected\n";
     };
 
+    socket.onmessage = (event) => {
+      document.getElementById("output").innerText += "Received: " + event.data + "\n";
+    };
+
+    socket.onerror = (error) => {
+      document.getElementById("output").innerText += "Error: " + error.message + "\n";
+    };
+
+    socket.onclose = () => {
+      document.getElementById("output").innerText += "Disconnected\n";
+    };
+
+    // ✅ Send message when button is clicked
     function sendMessage() {
-      const name = document.getElementById('name').value;
-      const message = document.getElementById('message').value;
-      if (name && message) {
-        socket.send(`${name}: ${message}`);
-        document.getElementById('message').value = '';
+      const input = document.getElementById("messageInput").value;
+      try {
+        const data = JSON.parse(input); // check if valid JSON
+        socket.send(JSON.stringify(data));
+      } catch (err) {
+        alert("Invalid JSON format!");
       }
     }
   </script>
