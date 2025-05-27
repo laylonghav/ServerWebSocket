@@ -2,9 +2,9 @@ const WebSocket = require('ws');
 
 // Global control data
 const rtuControls = {
-  "RTU-0923-01": {
-    Control: "Output1=0,Output2=0",
-    ControlStatus: "Output1=0,Output2=0"
+  "": {
+    Control: "",
+    ControlStatus: ""
   }
 };
 
