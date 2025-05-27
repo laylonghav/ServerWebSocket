@@ -8,6 +8,9 @@ const rtuControls = {
   }
 };
 
+// Optional: Store added generals in memory (simulate DB)
+const generalStore = [];
+
 function startWebSocketServer(server) {
   const wss = new WebSocket.Server({ server });
 
@@ -24,22 +27,20 @@ function startWebSocketServer(server) {
       try {
         const parsed = JSON.parse(msgStr);
 
-        // Handle control update
+        // ✅ Handle device control update
         if (parsed.type === 'control' && parsed.deviceId && parsed.control) {
           const { deviceId, control } = parsed;
 
           if (rtuControls[deviceId]) {
             rtuControls[deviceId].Control = control;
-            rtuControls[deviceId].ControlStatus = control; // optionally sync status
+            rtuControls[deviceId].ControlStatus = control;
           } else {
-            // If device not yet in map, create it
             rtuControls[deviceId] = {
               Control: control,
               ControlStatus: control
             };
           }
 
-          // Optionally broadcast the updated control to all clients
           const updateMessage = JSON.stringify({
             type: 'update',
             deviceId,
@@ -54,6 +55,39 @@ function startWebSocketServer(server) {
 
           console.log(`Updated ${deviceId}: ${control}`);
         }
+
+        // ✅ Handle adding General component
+        else if (parsed.type === 'ADD_GENERAL' && parsed.payload) {
+          const generalData = parsed.payload;
+
+          // Add to mock store with a fake ID
+          const newGeneral = {
+            ...generalData,
+            general_id: `gen-${Date.now()}`
+          };
+          generalStore.push(newGeneral);
+
+          console.log("General added:", newGeneral);
+
+          // Send confirmation back to sender
+          ws.send(JSON.stringify({
+            type: 'GENERAL_ADDED',
+            payload: newGeneral
+          }));
+
+          // Optionally broadcast to other clients
+          const broadcast = JSON.stringify({
+            type: 'NEW_GENERAL_BROADCAST',
+            payload: newGeneral
+          });
+
+          wss.clients.forEach(client => {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+              client.send(broadcast);
+            }
+          });
+        }
+
       } catch (err) {
         console.error('Invalid message format:', err);
       }
