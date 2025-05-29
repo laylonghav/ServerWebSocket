@@ -2,7 +2,7 @@ const WebSocket = require("ws");
 
 const generalStore = [];
 const controlStore = [];
-const VFDStore = {};
+const VFDStore = [];
 
 function broadcastOnce(wss, generalStore, controlStore, VFDStore) {
   const message = {
@@ -15,6 +15,7 @@ function broadcastOnce(wss, generalStore, controlStore, VFDStore) {
   console.log(JSON.stringify(message, null, 2));
 
   const data = JSON.stringify(message);
+
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(data);
@@ -36,8 +37,6 @@ function startWebSocketServer(server) {
         const parsed = JSON.parse(msgStr);
         const rtuId = Object.keys(parsed)[0];
         const payload = parsed[rtuId];
-
-        console.log("RTU ID : ", rtuId);
 
         if (payload?.Control) {
           const controlString = payload.Control;
@@ -78,47 +77,19 @@ function startWebSocketServer(server) {
             general: data,
           });
         }
-
-        // if (payload?.VFDData) {
-        //   const data = payload.VFDData;
-
-        //   const existing = VFDStore.find((item) => item.rtuId === rtuId);
-        //   if (existing) {
-        //     existing.data = data;
-        //   } else {
-        //     VFDStore.push({ rtuId, data });
-        //   }
-
-        //   broadcast(wss, {
-        //     type: rtuId,
-        //     VFD: data,
-        //   });
-        // }
-
-        // —— UPDATED VFDData handler ——
         if (payload?.VFDData) {
-          const vfdBlock = payload.VFDData;
-
-          // If this rtuId does not exist yet, create an empty object for it
-          if (!VFDStore[rtuId]) {
-            VFDStore[rtuId] = {};
+          const data = payload.VFDData;
+          const existing = VFDStore.find((item) => item.id_rtu === data.id_rtu);
+          if (existing) {
+            Object.assign(existing, data);
+          } else {
+            VFDStore.push(data);
           }
 
-          // Merge or update each VFD key under this RTU
-          for (const vfdId in vfdBlock) {
-            VFDStore[rtuId][vfdId] = {
-              ...VFDStore[rtuId][vfdId], // merge existing data (if any)
-              ...vfdBlock[vfdId], // overwrite with new data
-            };
-
-            // Broadcast this VFD block to all clients
-            broadcast(wss, {
-              type: rtuId,
-              VFD: {
-                [vfdId]: VFDStore[rtuId][vfdId],
-              },
-            });
-          }
+          broadcast(wss, {
+            type: rtuId, // "VFD-update",
+            VFD: data,
+          });
         }
 
         //✅ Broadcast both stores just once to this new client
